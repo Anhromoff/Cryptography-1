@@ -9,14 +9,9 @@ package uk.org.bobulous.java.crypto.keccak;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.function.UnaryOperator;
 
 /**
@@ -243,7 +238,7 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	 * provided with an invalid value.
 	 */
 	public KeccakSponge(int bitrate, int capacity, String suffixBits,
-			int outputLength) {
+                        int outputLength) {
 		validateBitrate(bitrate);
 		validateCapacity(capacity);
 		validateSuffixBits(suffixBits);
@@ -352,6 +347,8 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 				return new KeccakState400();
 			case 8:
 				return new KeccakState200();
+            case 4:
+                return new KeccakState100();
 			default:
 				throw new UnsupportedOperationException(
 						"Permutation width currently not supported.");
@@ -711,9 +708,9 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	private static void validatePermutationWidth(short width) {
 		// TODO: Add support for smaller widths (with lanes of less than one byte).
 		// (Have not been able to find KATs for widths below 200 bits.)
-		if (width < 200) {
+		if (width < 100) {
 			throw new UnsupportedOperationException(
-					"Support is not yet in place for permutations widths smaller than 200 bits.");
+					"Support is not yet in place for permutations widths smaller than 100 bits.");
 		}
 		if (!VALID_WIDTHS.contains(width)) {
 			List<Short> validWidthList = new ArrayList<>(VALID_WIDTHS);
@@ -823,16 +820,117 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		}
 	}
 
+	private static String DoKeccak(String message, int rounds)
+    {
+        int sum = 25*(int)Math.pow(2, (rounds-12)/2);
+        int bitrate = (sum / 8-1) * 8;
+        int capacity = sum - bitrate;
+        KeccakSponge spongeFunction = new KeccakSponge(bitrate, capacity, "", 256);
+        return FIPS202.hexFromBytes(spongeFunction.apply(message.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private static byte[] DoKeccakBytes(byte[] message, int rounds)
+    {
+        int sum = 25*(int)Math.pow(2, (rounds-12)/2);
+        int bitrate = (sum / 8-1) * 8;
+        int capacity = sum - bitrate;
+        KeccakSponge spongeFunction = new KeccakSponge(bitrate, capacity, "", message.length*8);
+        return spongeFunction.apply(message);
+    }
+
+    public static byte[] xor(byte[] a, byte[] b)
+    {
+        byte[] result = new byte[Math.min(a.length, b.length)];
+
+        for (int i = 0; i < result.length; i++)
+        {
+            result[i] = (byte) (((int) a[i]) ^ ((int) b[i]));
+        }
+
+        return result;
+    }
+
+    public static int count_1(byte[] b)
+    {
+        //int c = ByteBuffer.wrap(b).getInt();
+        //String s = Integer.toBinaryString(c);
+        BigInteger bi = new BigInteger(b);
+        String s = bi.toString(2);
+
+        int k=0;
+        for(int i=0; i<s.length(); i++)
+        {
+            if(s.charAt(i) == '1') k++;
+        }
+        return k;
+    }
+
+    private static final String CHAR_LIST =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+
+    /**
+     * This method generates random string
+     * @return
+     */
+    public static String generateRandomString(int n)
+    {
+
+        StringBuffer randStr = new StringBuffer();
+        for(int i=0; i<n; i++){
+            int number = getRandomNumber();
+            char ch = CHAR_LIST.charAt(number);
+            randStr.append(ch);
+        }
+        return randStr.toString();
+    }
+
+    /**
+     * This method generates random numbers
+     * @return int
+     */
+    private static int getRandomNumber() {
+        int randomInt = 0;
+        Random randomGenerator = new Random();
+        randomInt = randomGenerator.nextInt(CHAR_LIST.length());
+        if (randomInt - 1 == -1)
+        {
+            return randomInt;
+        } else {
+            return randomInt - 1;
+        }
+    }
 	/*
 	 * This main method is being used to run the profiler, so leave it in place
 	 * until optimisation has been completed.
 	 */
-	public static void main(String[] args) {
-		KeccakSponge spongeFunction = new KeccakSponge(576, 1024, "", 512);
-		byte[] message = new byte[]{(byte) 19};
-		byte[] hash = spongeFunction.apply(5, message);
-		for (int i = 0; i < 900000; ++i) {
-			hash = spongeFunction.apply(hash);
-		}
+	public static void main(String[] args)
+	{
+		/*KeccakSponge spongeFunction = new KeccakSponge(64, 36, "", 512);
+		byte[] message = "The quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8);
+		byte[] hash = spongeFunction.apply(message);
+        String str = FIPS202.hexFromBytes(hash);*/
+
+		String s = generateRandomString(512);
+        System.out.println(s);
+		byte[] sbytes = s.getBytes(StandardCharsets.UTF_8);
+
+		byte[] hash16 = DoKeccakBytes(sbytes, 16);
+        byte[] hash18 = DoKeccakBytes(sbytes, 18);
+        byte[] hash20 = DoKeccakBytes(sbytes, 20);
+        byte[] hash22 = DoKeccakBytes(sbytes, 22);
+        byte[] hash24 = DoKeccakBytes(sbytes, 24);
+
+        System.out.println(sbytes.length*8  + " " + hash24.length*8);
+        System.out.println(count_1(xor(sbytes,hash16)));
+        System.out.println(count_1(xor(sbytes,hash18)));
+        System.out.println(count_1(xor(sbytes,hash20)));
+        System.out.println(count_1(xor(sbytes,hash22)));
+        System.out.println(count_1(xor(sbytes,hash24)));
+
+		/*System.out.println("16 " + DoKeccak(s, 16));
+        System.out.println("18 " + DoKeccak(s, 18));
+        System.out.println("20 " + DoKeccak(s, 20));
+        System.out.println("22 " + DoKeccak(s, 22));
+        System.out.println("24 " + DoKeccak(s, 24));*/
 	}
 }
