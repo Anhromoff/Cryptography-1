@@ -820,15 +820,6 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 		}
 	}
 
-	private static String DoKeccak(String message, int rounds)
-    {
-        int sum = 25*(int)Math.pow(2, (rounds-12)/2);
-        int bitrate = (sum / 8-1) * 8;
-        int capacity = sum - bitrate;
-        KeccakSponge spongeFunction = new KeccakSponge(bitrate, capacity, "", 256);
-        return FIPS202.hexFromBytes(spongeFunction.apply(message.getBytes(StandardCharsets.UTF_8)));
-    }
-
     private static byte[] DoKeccakBytes(byte[] message, int rounds)
     {
         int sum = 25*(int)Math.pow(2, (rounds-12)/2);
@@ -852,8 +843,6 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 
     public static int count_1(byte[] b)
     {
-        //int c = ByteBuffer.wrap(b).getInt();
-        //String s = Integer.toBinaryString(c);
         BigInteger bi = new BigInteger(b);
         String s = bi.toString(2);
 
@@ -876,7 +865,8 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
     {
 
         StringBuffer randStr = new StringBuffer();
-        for(int i=0; i<n; i++){
+        for(int i=0; i<n; i++)
+        {
             int number = getRandomNumber();
             char ch = CHAR_LIST.charAt(number);
             randStr.append(ch);
@@ -888,7 +878,8 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
      * This method generates random numbers
      * @return int
      */
-    private static int getRandomNumber() {
+    private static int getRandomNumber()
+	{
         int randomInt = 0;
         Random randomGenerator = new Random();
         randomInt = randomGenerator.nextInt(CHAR_LIST.length());
@@ -905,11 +896,6 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
 	 */
 	public static void main(String[] args)
 	{
-		/*KeccakSponge spongeFunction = new KeccakSponge(64, 36, "", 512);
-		byte[] message = "The quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8);
-		byte[] hash = spongeFunction.apply(message);
-        String str = FIPS202.hexFromBytes(hash);*/
-
 		String s = generateRandomString(512);
         System.out.println(s);
 		byte[] sbytes = s.getBytes(StandardCharsets.UTF_8);
@@ -926,11 +912,5 @@ public final class KeccakSponge implements UnaryOperator<byte[]> {
         System.out.println(count_1(xor(sbytes,hash20)));
         System.out.println(count_1(xor(sbytes,hash22)));
         System.out.println(count_1(xor(sbytes,hash24)));
-
-		/*System.out.println("16 " + DoKeccak(s, 16));
-        System.out.println("18 " + DoKeccak(s, 18));
-        System.out.println("20 " + DoKeccak(s, 20));
-        System.out.println("22 " + DoKeccak(s, 22));
-        System.out.println("24 " + DoKeccak(s, 24));*/
 	}
 }
